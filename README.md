@@ -57,14 +57,6 @@ The system is built around four specialized agents, orchestrated by Skynet:
   - TypeScript / Angular (Signals, Standalone Components)
   - Python, React, and more
 
-### 📚 **Alexandria** — Project Memory
-- **Role**: Living documentation and project history
-- **Responsibilities**:
-  - Load context at session start
-  - Track implemented, partial, and planned features
-  - Update plan files and changelog on completion
-  - Maintain architectural decision records
-
 ### 🎨 **Woz** — UI/UX Designer
 - **Role**: Creates design specifications and UI/UX guidelines
 - **Called by**: Spock during planning phase
@@ -101,10 +93,8 @@ In GitHub Copilot Chat (VS Code), simply type:
 ```
 
 Skynet will:
-1. Load project history via Alexandria
-2. Delegate to Spock for planning
-3. Once plan is approved, delegate to Neo for implementation
-4. Update documentation via Alexandria on completion
+1. Delegate to Spock for planning
+2. Once plan is approved, delegate to Neo for implementation
 
 ### 3. Review Plan Files
 
@@ -124,7 +114,6 @@ docs/plan/2026-02-24-1430-jwt-authentication.md
 │   ├── skynet.agent.md         # Orchestrator
 │   ├── spock.agent.md          # Planner
 │   ├── neo.agent.md            # Coder
-│   ├── alexandria.agent.md     # Memory
 │   └── woz.agent.md            # Designer
 │
 ├── instructions/               # Generic coding guidelines
@@ -159,15 +148,12 @@ docs/                           # Created in your project
 ```
 User: "@skynet convert controllers to minimal API"
 
-1. Skynet → Alexandria (open mode)
-   Returns: Project history, existing patterns, dependencies
-
-2. Skynet → Spock (interview mode)
+1. Skynet → Spock (interview mode)
    Spock asks: Which controllers? Performance requirements? Breaking changes?
 
-3. User answers questions
+2. User answers questions
 
-4. Skynet → Spock (plan mode)
+3. Skynet → Spock (plan mode)
    Spock produces:
    - docs/plan/2026-02-24-1430-minimal-api-conversion.md
    - Technical strategy
@@ -175,19 +161,14 @@ User: "@skynet convert controllers to minimal API"
    - Testing strategy
    - Risk assessment
 
-5. User reviews plan → approves
+4. User reviews plan → approves
 
-6. Skynet → Neo (implement mode, with plan)
+5. Skynet → Neo (implement mode, with plan)
    Neo writes:
    - Minimal API endpoints
    - DTOs and validators
    - Unit tests
    - Integration tests
-
-7. Skynet → Alexandria (close mode)
-   Alexandria updates:
-   - Plan file status → "✅ Implemented"
-   - docs/IMPLEMENTATION-LOG.md with entry
 ```
 
 **Result**: Feature implemented, tested, and documented in < 10 minutes.
