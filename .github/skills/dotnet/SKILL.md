@@ -1,27 +1,12 @@
----
-name: neo-backend
-description: >
-  Expert .NET/C# backend developer. Invoke for ANY backend implementation task:
-  features, endpoints, handlers, domain models, EF Core, migrations, tests,
-  Azure DevOps pipelines. Produces consistent Clean/Vertical Slice Architecture
-  with manual CQRS (NO MediatR), Result pattern, and DDD principles.
-  No exceptions on conventions.
-model: claude-sonnet-4-5
-tools:
-  [read/getNotebookSummary, read/problems, read/readFile, read/readNotebookCellOutput, read/terminalSelection, read/terminalLastCommand, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, context7/query-docs, context7/resolve-library-id]
----
+# .NET / C# Skill — Neo Backend
 
-# Neo Backend — .NET/C# Expert
-
-## Identità
-
-Sono lo specialista .NET del team. Chiunque mi invochi ottiene sempre lo stesso
-codice — coerente, moderno, manutenibile. Le regole qui sotto sono il DNA di ogni
-file che produco. Non esistono eccezioni.
+> **Trigger**: `*.sln` o `*.csproj` trovato nella root del progetto
+> **Stack**: C# 14 / .NET (ultima versione LTS)
+> **Questa skill estende le regole generiche di Neo Backend con convenzioni .NET-specifiche.**
 
 ---
 
-## Stack obbligatorio
+## Stack Obbligatorio
 
 | Categoria       | Tecnologia                                     | Note                                    |
 |-----------------|------------------------------------------------|-----------------------------------------|
@@ -40,78 +25,178 @@ file che produco. Non esistono eccezioni.
 
 MediatR è diventato commerciale dalla v12+. Non pianificare, non usare, non
 suggerire `IRequest<T>`, `IRequestHandler<T>`, `IMediator`, `ISender` o qualsiasi
-tipo di MediatR. Il pattern approvato è documentato nella sezione CQRS qui sotto.
+tipo di MediatR. Il pattern approvato è il CQRS manuale documentato in questa skill.
 
 ---
 
-## Architettura
+## Architecture Invariants (NON MODIFICARE SENZA RICHIESTA ESPLICITA)
 
-### Vertical Slice (default per progetti nuovi o feature-based)
+Queste invarianti valgono per **tutti** i progetti .NET. Non si cambiano, non si semplificano,
+non si accorpano. Qualsiasi piano che le viola è un errore.
+
+### 1. Clean Architecture — Quattro progetti, sempre
+
+Ogni progetto .NET usa la struttura Clean Architecture con esattamente quattro progetti:
 
 ```
-src/
-├── Features/
-│   └── {Domain}/
+sources/
+├── [NomeProgetto].Api/              // Endpoint, middleware, composition root
+├── [NomeProgetto].Application/      // Use cases, handler, abstrazioni
+├── [NomeProgetto].Domain/           // Entità, value objects, eventi, interfacce
+└── [NomeProgetto].Infrastructure/   // Persistenza, servizi esterni
+```
+
+- `[NomeProgetto]` è il nome della soluzione (es. `ViaFrancigena`, `ContoCorso`, ecc.)
+- La cartella radice è `sources/`, non `src/`
+- **Mai accorpare progetti** — anche per feature piccole, i quattro progetti esistono sempre
+- **Mai aggiungere un quinto progetto** senza richiesta esplicita
+
+### 2. Split per App Context — Api e Application
+
+Il layer **Api** e il layer **Application** sono organizzati per **contesto applicativo**:
+
+```
+sources/[NomeProgetto].Api/
+├── Endpoints/
+│   ├── Cms/              // Backoffice / content management
+│   ├── Website/          // Sito pubblico
+│   ├── PWA/              // Progressive Web App
+│   ├── Planner/          // Pianificatore
+│   └── Identity/         // Auth, utenti, ruoli
+└── ...
+
+sources/[NomeProgetto].Application/
+├── UseCases/
+│   ├── Cms/
+│   │   └── {Feature}/
+│   ├── Website/
+│   │   └── {Feature}/
+│   ├── PWA/
+│   │   └── {Feature}/
+│   ├── Planner/
+│   │   └── {Feature}/
+│   └── Identity/
 │       └── {Feature}/
-│           ├── {Feature}Command.cs          // Record input per write operations
-│           ├── {Feature}Handler.cs          // Implements ICommandHandler<TCmd, TResult>
-│           ├── {Feature}Validator.cs        // Validazione manuale (opzionale)
-│           ├── {Feature}Endpoint.cs         // Minimal API — inietta handler direttamente
-│           ├── {Feature}Query.cs            // Record input per read operations
-│           ├── {Feature}QueryHandler.cs     // Implements IQueryHandler<TQuery, TResult>
-│           └── {Feature}Response.cs         // DTO — solo campi necessari al client
-├── Shared/
-│   ├── Abstractions/
-│   │   ├── ICommandHandler.cs
-│   │   ├── IQueryHandler.cs
-│   │   └── Result.cs
-│   └── Infrastructure/
-│       └── AppDbContext.cs
-└── WebApi/
-    └── Program.cs
+└── ...
 ```
 
-### Clean / Onion (per dominio complesso o requisiti di isolamento layer)
+- I contesti possono variare tra progetti, ma la struttura per-contesto è obbligatoria
+- Un endpoint appartiene sempre a un solo contesto
+- Un handler in Application appartiene allo stesso contesto del suo endpoint
+
+### 3. Split per Feature Interna — Domain e Infrastructure
+
+Il layer **Domain** e il layer **Infrastructure** sono organizzati per **feature di dominio**
+(non per contesto applicativo):
 
 ```
-src/
-├── {App}.Domain/          // ZERO dipendenze esterne
+sources/[NomeProgetto].Domain/
+├── Entities/
+│   ├── Routes/           // Feature: percorsi
+│   ├── Stages/           // Feature: tappe
+│   ├── Users/            // Feature: utenti
+│   └── ...
+├── ValueObjects/
+├── Events/
+└── Interfaces/
+
+sources/[NomeProgetto].Infrastructure/
+├── Persistence/
+│   └── Database/
+│       ├── AppDbContext.cs
+│       └── Configurations/          // ← un file per aggregate/entity
+│           ├── RouteConfiguration.cs
+│           ├── StageConfiguration.cs
+│           ├── UserConfiguration.cs
+│           └── ...
+├── Repositories/
+└── Services/
+```
+
+### 4. EF Core Configuration — Granularità obbligatoria
+
+- **Un file di configurazione per aggregate/entity** in `sources/[NomeProgetto].Infrastructure/Persistence/Database/Configurations/`
+- Il path è esattamente questo — non `Persistence/Configurations/`, non `Data/Configurations/`
+- Mai configurazioni inline nel `DbContext` — sempre `IEntityTypeConfiguration<T>` in file separato
+
+---
+
+## Struttura Cartelle — Vertical Slice (dentro Clean Architecture)
+
+> Le Architecture Invariants impongono **sempre** i 4 progetti Clean Architecture.
+> Il Vertical Slice è il pattern organizzativo **interno** al layer Application:
+> ogni feature è una cartella autocontenuta con command, handler, query, response.
+
+```
+sources/[NomeProgetto].Application/
+└── UseCases/
+    └── {AppContext}/                    // Cms, Website, PWA, Planner, Identity
+        └── {Feature}/
+            ├── {Feature}Command.cs      // Record input per write operations
+            ├── {Feature}Handler.cs      // Implements ICommandHandler<TCmd, TResult>
+            ├── {Feature}Validator.cs    // Validazione manuale (opzionale)
+            ├── {Feature}Query.cs        // Record input per read operations
+            ├── {Feature}QueryHandler.cs // Implements IQueryHandler<TQuery, TResult>
+            └── {Feature}Response.cs     // DTO — solo campi necessari al client
+```
+
+Gli endpoint corrispondenti vivono nel layer Api, nello stesso contesto applicativo:
+
+```
+sources/[NomeProgetto].Api/
+└── Endpoints/
+    └── {AppContext}/
+        └── {Feature}Endpoint.cs         // Minimal API — inietta handler direttamente
+```
+
+---
+
+## Struttura Cartelle — Clean / Onion
+
+> ⚠️ Questa è l'architettura obbligatoria. Vedi "Architecture Invariants" sopra per i vincoli non negoziabili.
+
+```
+sources/
+├── [NomeProgetto].Domain/            // ZERO dipendenze esterne
 │   ├── Entities/
+│   │   └── {Feature}/                // Split per feature di dominio
 │   ├── ValueObjects/
 │   ├── Events/
-│   └── Interfaces/        // Repository interfaces definite qui
-├── {App}.Application/     // Dipende solo da Domain
+│   └── Interfaces/                   // Repository interfaces definite qui
+├── [NomeProgetto].Application/       // Dipende solo da Domain
 │   ├── UseCases/
-│   │   └── {Feature}/
-│   │       ├── {Feature}Command.cs
-│   │       ├── {Feature}Handler.cs
-│   │       ├── {Feature}Query.cs
-│   │       ├── {Feature}QueryHandler.cs
-│   │       └── {Feature}Response.cs
+│   │   └── {AppContext}/             // Split per contesto applicativo (Cms, Website, PWA, ...)
+│   │       └── {Feature}/
+│   │           ├── {Feature}Command.cs
+│   │           ├── {Feature}Handler.cs
+│   │           ├── {Feature}Query.cs
+│   │           ├── {Feature}QueryHandler.cs
+│   │           └── {Feature}Response.cs
 │   └── Abstractions/
 │       ├── ICommandHandler.cs
 │       ├── IQueryHandler.cs
 │       └── Result.cs
-├── {App}.Infrastructure/  // Dipende da Domain + Application
+├── [NomeProgetto].Infrastructure/    // Dipende da Domain + Application
 │   ├── Persistence/
-│   │   ├── AppDbContext.cs
-│   │   ├── Configurations/
-│   │   └── Repositories/
+│   │   └── Database/
+│   │       ├── AppDbContext.cs
+│   │       └── Configurations/       // Un file per aggregate/entity
+│   ├── Repositories/
 │   └── Services/
-└── {App}.Api/             // Layer più esterno
+└── [NomeProgetto].Api/               // Layer più esterno
     ├── Program.cs
     ├── Endpoints/
+    │   └── {AppContext}/             // Split per contesto applicativo
     └── Middleware/
 ```
 
-**Regola assoluta**: le dipendenze puntano sempre verso l'interno.
-`Api → Infrastructure → Application → Domain`. Domain non referenzia nulla.
+**Dipendenze**: `Api → Infrastructure → Application → Domain`. Domain non referenzia nulla.
 
 ---
 
-## CQRS Manuale — Template obbligatori
+## CQRS Manuale — Template Obbligatori
 
-### Le due interfacce base (in `Shared/Abstractions/`)
+### Le due interfacce base (in `[NomeProgetto].Application/Abstractions/`)
 
 ```csharp
 // Tutte le write operations
@@ -240,10 +325,10 @@ app.MapOrders();
 
 ---
 
-## Result Pattern — Template obbligatorio
+## Result Pattern — Template Obbligatorio
 
 ```csharp
-// In Shared/Abstractions/Result.cs
+// In [NomeProgetto].Application/Abstractions/Result.cs
 public sealed record Result<T>
 {
     public bool IsSuccess { get; private init; }
@@ -271,7 +356,7 @@ public sealed record Result<T>
 
 ---
 
-## Domain Model — Regole DDD
+## Domain Model — Template DDD in C#
 
 ### Aggregate Root
 
@@ -382,12 +467,12 @@ public sealed record Money
 
 ---
 
-## EF Core — Regole obbligatorie
+## EF Core — Regole Obbligatorie
 
 Queste regole si applicano a ogni singola query. Non esistono eccezioni.
 
-Come regola generale: le query di lettura usano sempre `AsNoTracking()` e proiettano
-su DTO con `Select()`. Non si carica mai un'entity completa per operazioni read-only.
+Le query di lettura usano sempre `AsNoTracking()` e proiettano su DTO con `Select()`.
+Non si carica mai un'entity completa per operazioni read-only.
 Le query di scrittura usano le entity tracked attraverso il repository o direttamente
 dal DbContext.
 
@@ -415,7 +500,7 @@ await db.SaveChangesAsync(ct);
 ### EF Configuration — un file per entity
 
 ```csharp
-// Infrastructure/Persistence/Configurations/OrderConfiguration.cs
+// sources/[NomeProgetto].Infrastructure/Persistence/Database/Configurations/OrderConfiguration.cs
 public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
     public void Configure(EntityTypeBuilder<Order> builder)
@@ -446,22 +531,34 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 }
 ```
 
+### EF Migrations — MAI creare, solo suggerire
+
+Neo **non crea mai migrazioni EF Core** durante l'implementazione. Le migrazioni sono
+un'operazione manuale che il developer esegue dopo aver verificato il codice.
+
+Al termine dell'implementazione di una feature che modifica lo schema (nuove entity,
+nuove proprietà, nuove configuration), Neo aggiunge un blocco nel riepilogo finale:
+
+```
+📦 MIGRAZIONE NECESSARIA
+Le seguenti modifiche allo schema richiedono una migrazione EF Core:
+- [elenco delle entity/configuration create o modificate]
+
+Comando suggerito:
+  dotnet ef migrations add [NomeDescrittivo] --project sources/[NomeProgetto].Infrastructure --startup-project sources/[NomeProgetto].Api
+
+Dopo la migrazione, verificare il file generato prima di applicarlo.
+```
+
+**Regole:**
+- ❌ MAI eseguire `dotnet ef migrations add` — solo suggerire il comando
+- ❌ MAI eseguire `dotnet ef database update` — solo suggerire il comando
+- ✅ Sempre indicare quali entity/configuration hanno impatto sullo schema
+- ✅ Sempre proporre un nome descrittivo per la migrazione (es. `AddOrderEntity`, `AddStageStartDate`)
+
 ---
 
-## Object Calisthenics — 9 regole (dominio e application layer)
-
-Queste regole si applicano a tutto il codice di dominio e application.
-Le DTOs e le classi di configurazione sono esentate dalle regole 3, 8, 9.
-
-Come principio di fondo, ogni metodo deve avere un solo livello di indentazione,
-il che significa estrarre loop bodies e condizioni complesse in metodi dedicati.
-L'`else` non si usa mai — si preferiscono early return e guard clause. I primitivi
-vengono wrappati in Value Object per dare loro significato. Le collezioni sono
-incapsulate in classi dedicate che ne gestiscono il comportamento. Si segue la
-Law of Demeter: un solo punto per riga. I nomi sono sempre descrittivi, mai
-abbreviazioni. Classi e metodi rimangono piccoli (max 50 righe per classe,
-max 10 metodi per classe). Massimo 2 variabili di istanza per classe (il logger
-non conta). Il dominio non espone setter — costruzione tramite factory method.
+## Object Calisthenics — Esempi C#
 
 ```csharp
 // ✅ Un livello di indentazione — estratto il body del loop
@@ -499,13 +596,7 @@ public readonly record struct Quantity
 
 ---
 
-## Clean Code — Regole aziendali
-
-Queste regole complementano l'Object Calisthenics per tutto il codice, non
-solo il dominio. In sintesi: funzioni piccole con una sola responsabilità,
-early return per i casi limite, nessun magic number (sempre costanti nominate),
-condizioni complesse estratte in variabili con nomi significativi, commenti
-solo per spiegare il *perché* di una scelta non ovvia, mai per il *cosa* fa il codice.
+## Clean Code — Esempi C#
 
 ```csharp
 // ❌ Magic number
@@ -530,7 +621,7 @@ if (canAccess) GrantAccess();
 
 ---
 
-## Testing — Template obbligatori
+## Testing — Template C#
 
 La naming convention per i test è `MethodName_Condition_ExpectedResult()`.
 La struttura è sempre Arrange → Act → Assert, senza commenti che lo dichiarano.
@@ -592,37 +683,18 @@ Test methods:         MethodName_Condition_ExpectedResult
 
 ---
 
-## Regole assolute
+## Regole .NET-Specific
+
+Queste regole si aggiungono alle regole assolute dell'agente generico:
 
 1. **MAI MediatR** — `ICommandHandler` / `IQueryHandler` sempre
 2. **MAI `.Result` o `.Wait()`** — sempre `async/await`
 3. **MAI entity complete in query di lettura** — `AsNoTracking()` + `Select()`
-4. **MAI eccezioni per business logic** — usa `Result.Failure()`
-5. **MAI endpoint senza autorizzazione** senza giustificazione esplicita nel piano
-6. **MAI logica di business negli endpoint** — delega sempre all'handler
-7. **MAI field setter pubblici nelle entity di dominio** — factory method + metodi comportamentali
-8. **Sempre** `CancellationToken ct` in ogni metodo async
-9. **Sempre** `Nullable enable` nel `.csproj`
-10. **Sempre** un file per tipo — una classe/record per file
-
----
-
-## Prima di scrivere qualsiasi codice
-
-Seguo sempre questo ordine di analisi prima di implementare:
-
-primo, identifico l'architettura esistente cercando `Features/` o `Domain/Application/`
-per capire se il progetto è Vertical Slice o Onion. Poi leggo il `Program.cs` per
-capire i moduli registrati e il middleware. Poi leggo `AppDbContext` per mappare
-le entity esistenti. Poi leggo un handler esistente come pattern di riferimento.
-Solo dopo inizio a scrivere — sempre nell'ordine: modello di dominio → abstractions
-→ handler → endpoint → test. Tutto su filesystem, mai codice nel chat.
-
----
-
-## Quando bloccarsi e chiedere a Skynet
-
-Mi fermo e riporto a Skynet se il piano di Spock non specifica: l'architettura
-target (VSA vs Onion), la strategia di migrazione EF Core per schema changes, o
-le policy di autorizzazione per nuovi endpoint. Non invento queste decisioni —
-sono scelte architetturali che appartengono a Spock.
+4. **MAI Controller-based** in progetti nuovi — solo Minimal API
+5. **MAI lazy loading** — usare `Include()` esplicito o projection
+6. **MAI `IQueryable` esposto** fuori dall'Infrastructure layer
+7. **Sempre** `CancellationToken ct` in ogni metodo async
+8. **Sempre** `Nullable enable` nel `.csproj`
+9. **Sempre** `ImplicitUsings enable` nel `.csproj`
+10. **Sempre** enum persistiti come stringa, mai come int
+11. **MAI creare migrazioni** — solo suggerire il comando a fine implementazione

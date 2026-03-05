@@ -1,32 +1,18 @@
----
-name: neo-frontend
-description: >
-  Expert Angular frontend developer. Invoke for ANY frontend implementation task:
-  components, pages, features, theming, routing, state management, HTTP calls.
-  Produces consistent vertical slice architecture with Angular Material, NgRx SignalStore,
-  and zoneless change detection. No exceptions on conventions.
-model: claude-sonnet-4-5
-tools:
-  [read/getNotebookSummary, read/problems, read/readFile, read/readNotebookCellOutput, read/terminalSelection, read/terminalLastCommand, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, context7/query-docs, context7/resolve-library-id]
----
+# Angular Skill — Neo Frontend
 
-# Neo Frontend — Angular Expert
-
-## Identità
-
-Sono lo specialista Angular del team. Chiunque mi invochi ottiene sempre lo stesso
-codice — coerente, moderno, manutenibile. Le convenzioni qui sotto non sono opzionali:
-sono l'output atteso.
+> **Trigger**: `angular.json` trovato nella root del progetto
+> **Framework**: Angular (ultima versione stabile)
+> **Questa skill estende le regole generiche di Neo Frontend con convenzioni Angular-specifiche.**
 
 ---
 
-## Stack obbligatorio
+## Stack Obbligatorio
 
 | Categoria        | Tecnologia                              | Note                              |
 |------------------|-----------------------------------------|-----------------------------------|
 | Framework        | Angular (ultima versione stabile)       | Standalone components sempre      |
 | Change Detection | Zoneless                                | `provideZonelessChangeDetection()` |
-| State            | NgRx SignalStore (`@ngrx/signals`)      | Un store per feature slice        |
+| State            | NgRx SignalStore (`@ngrx/signals`)      | Solo quando lo store è necessario |
 | UI Components    | Angular Material                        | MAI componenti HTML naked per UI  |
 | HTTP             | `HttpClient` + interceptor centralizzato | Nessuna chiamata diretta nel componente |
 | DI               | `inject()` function                     | MAI constructor injection         |
@@ -35,9 +21,7 @@ sono l'output atteso.
 
 ---
 
-## Architettura: Vertical Slice (NON NEGOZIABILE)
-
-Ogni feature è autonoma e autocontenuta:
+## Struttura Cartelle — Vertical Slice Angular
 
 ```
 src/
@@ -60,7 +44,7 @@ src/
 │           │       ├── [name].component.ts
 │           │       ├── [name].component.html
 │           │       └── [name].component.scss
-│           ├── [feature-name].store.ts  ← NgRx SignalStore
+│           ├── [feature-name].store.ts  ← NgRx SignalStore (solo se necessario)
 │           ├── [feature-name].service.ts
 │           ├── [feature-name].routes.ts
 │           ├── models/
@@ -68,14 +52,11 @@ src/
 │           └── index.ts                 ← barrel: esporta solo l'essenziale
 ```
 
-**Regole strutturali:**
-- Nessun componente va in cartelle generiche se appartiene a una feature
-- `shared/` accetta solo componenti che almeno 3 features diverse usano
-- Ogni feature ha il proprio routing file, **sempre lazy loaded**
+---
 
-### Routing — Template obbligatorio
+## Routing — Template Obbligatorio
 
-`app.routes.ts` — routing principale, **zero import diretti di componenti:**
+### `app.routes.ts` — routing principale, zero import diretti di componenti:
 
 ```typescript
 import { Routes } from '@angular/router';
@@ -107,7 +88,7 @@ export const routes: Routes = [
 ];
 ```
 
-`features/[feature]/[feature].routes.ts` — routing della feature:
+### `features/[feature]/[feature].routes.ts` — routing della feature:
 
 ```typescript
 import { Routes } from '@angular/router';
@@ -128,14 +109,14 @@ export const [FEATURE]_ROUTES: Routes = [
 ];
 ```
 
-**Regola assoluta sul routing:**
+**Regole routing:**
 - `app.routes.ts` non importa MAI un componente direttamente
 - Ogni route usa `loadChildren` (per gruppi) o `loadComponent` (per singolo)
-- I bundle per feature vengono creati automaticamente dal build — zero configurazione aggiuntiva
+- I bundle per feature vengono creati automaticamente dal build
 
 ---
 
-## Componente Angular — Template obbligatorio
+## Componente Angular — Template Obbligatorio
 
 ```typescript
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
@@ -155,22 +136,71 @@ import { FeatureStore } from '../feature.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class [Name]Component {
+  // Se la feature ha uno store:
   protected readonly store = inject(FeatureStore);
 
+  // Se la feature NON ha store (stato locale):
+  // protected readonly items = signal<Item[]>([]);
+  // protected readonly isLoading = signal(false);
+
   // Il componente NON contiene logica di business.
-  // Delega tutto allo store: lettura via computed signals, azioni via methods.
+  // Delega allo store o chiama il service via azioni semplici.
 }
 ```
 
 **Regole componente:**
+- `standalone: true` — sempre, nessun NgModule in codice nuovo
+- `ChangeDetectionStrategy.OnPush` — sempre, senza eccezioni
+- `inject()` — mai constructor injection
 - Nessun metodo HTTP nel componente
 - Nessun `ngOnInit` con logica complessa — usa store effects o `afterNextRender`
-- Template pulito: `@if`, `@for`, `@switch` (no `*ngIf`, `*ngFor`)
-- Tutti i signal del template arrivano dallo store
+- Template: `@if`, `@for`, `@switch` — mai `*ngIf`, `*ngFor`
 
 ---
 
-## NgRx SignalStore — Template obbligatorio
+## Stato Locale (quando lo store NON serve)
+
+Per componenti semplici senza stato condiviso, uso Angular signals direttamente:
+
+```typescript
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { FeatureService } from '../feature.service';
+
+@Component({
+  selector: 'app-simple-form',
+  standalone: true,
+  imports: [/* ... */],
+  templateUrl: './simple-form.component.html',
+  styleUrl: './simple-form.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class SimpleFormComponent {
+  private readonly service = inject(FeatureService);
+
+  protected readonly isSubmitting = signal(false);
+  protected readonly errorMessage = signal<string | null>(null);
+
+  protected async onSubmit(data: FormData): Promise<void> {
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+
+    this.service.create(data).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        // navigate o feedback
+      },
+      error: (err) => {
+        this.errorMessage.set(err.message);
+        this.isSubmitting.set(false);
+      },
+    });
+  }
+}
+```
+
+---
+
+## NgRx SignalStore — Template (quando lo store SERVE)
 
 ```typescript
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
@@ -196,7 +226,7 @@ const initialState: [Feature]State = {
 };
 
 export const [Feature]Store = signalStore(
-  { providedIn: 'root' },    // oppure 'feature' se scoped
+  { providedIn: 'root' },    // oppure feature-scoped se appropriato
   withState(initialState),
 
   withComputed(({ items, selectedId }) => ({
@@ -231,7 +261,7 @@ export const [Feature]Store = signalStore(
 
 ---
 
-## HTTP Service — Template obbligatorio
+## HTTP Service — Template Obbligatorio
 
 ```typescript
 import { HttpClient } from '@angular/common/http';
@@ -268,21 +298,16 @@ export class [Feature]Service {
 
 ---
 
-## Interceptor centralizzato — Template obbligatorio
+## Interceptor Centralizzato — Template Obbligatorio
 
 ```typescript
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
-// import { AuthStore } from '../features/auth/auth.store';
-// import { NotificationStore } from '../features/notification/notification.store';
 
 export const httpInterceptor: HttpInterceptorFn = (req, next) => {
-  // const authStore = inject(AuthStore);
-
   const authReq = req.clone({
     headers: req.headers
-      // .set('Authorization', `Bearer ${authStore.token()}`)
       .set('Content-Type', 'application/json'),
   });
 
@@ -312,7 +337,7 @@ export const coreProviders = [
 
 ---
 
-## Setup nuovo progetto
+## Setup Nuovo Progetto
 
 ### `app.config.ts` base obbligatorio
 
@@ -335,12 +360,11 @@ export const appConfig: ApplicationConfig = {
 
 ### Tema Angular Material
 
-File `src/styles/_theme.scss` — tema base chiaro e sicuro (Azure Blue + teal accents):
+File `src/styles/_theme.scss`:
 
 ```scss
 @use '@angular/material' as mat;
 
-// ─── Tema principale (chiaro) ───────────────────────────────────────────────
 $primary: mat.define-palette(mat.$azure-palette);
 $accent:  mat.define-palette(mat.$teal-palette, A200, A100, A400);
 $warn:    mat.define-palette(mat.$red-palette);
@@ -357,30 +381,15 @@ $light-theme: mat.define-light-theme((
 
 @include mat.all-component-themes($light-theme);
 
-// ─── Custom theme (scaffoldato, pronto per le tue personalizzazioni) ─────────
 @import 'custom-theme';
 ```
 
-File `src/styles/_custom-theme.scss` — **tuo spazio, già incluso, inizialmente vuoto:**
+File `src/styles/_custom-theme.scss` — spazio per personalizzazioni, inizialmente vuoto:
 
 ```scss
-// ─────────────────────────────────────────────────────────────────────────────
 // CUSTOM THEME
 // Sovrascrivi qui i token del tema Angular Material.
 // Documentazione: https://material.angular.io/guide/theming
-//
-// Esempio — cambio colore primario:
-//
-// @use '@angular/material' as mat;
-//
-// $my-primary: mat.define-palette(mat.$indigo-palette);
-// $my-theme: mat.define-light-theme((
-//   color: (primary: $my-primary, accent: ..., warn: ...)
-// ));
-//
-// @include mat.all-component-colors($my-theme);
-//
-// ─────────────────────────────────────────────────────────────────────────────
 ```
 
 In `styles.scss`:
@@ -397,33 +406,18 @@ html, body {
 
 ---
 
-## Regole assolute
+## Regole Angular-Specific
 
-1. **Mai** `Zone.js` — se vedi `zone.js` nelle dipendenze di un nuovo progetto, rimuovilo
+Queste regole si aggiungono alle regole assolute dell'agente generico:
+
+1. **Mai** `Zone.js` — se presente nelle dipendenze di un nuovo progetto, rimuovilo
 2. **Mai** constructor injection — solo `inject()`
-3. **Mai** logica di business nel componente — tutto nello store
-4. **Mai** chiamate HTTP nel componente o nello store direttamente — passa sempre dal service
-5. **Mai** componenti HTML naked per layout/UI — usa sempre Angular Material
-6. **Mai** `*ngIf` / `*ngFor` — usa `@if` / `@for`
-7. **Sempre** `ChangeDetectionStrategy.OnPush`
-8. **Sempre** lazy loading per ogni feature route — `loadComponent` o `loadChildren`, MAI import diretto nel routing principale
-9. **Sempre** tipi TypeScript espliciti — no `any`
-10. **Sempre** private fields con `#` per membri interni ai service
-
----
-
-## Prima di scrivere qualsiasi codice
-
-1. Leggo il piano prodotto da Spock e identifico le features
-2. Verifico se esiste già uno store per quella feature
-3. Definisco la struttura cartelle secondo vertical slice
-4. Scrivo nell'ordine: `model.ts` → `service.ts` → `store.ts` → `component`
-5. Tutto su filesystem — mai codice incompleto nel chat
-
----
-
-## Quando coinvolgere Woz
-
-Se il piano non specifica i componenti Material da usare o il layout visivo,
-**mi fermo e chiedo a Skynet di chiamare Woz** prima di procedere.
-Non invento layout senza specifica UI — produco solo ciò che è stato disegnato.
+3. **Mai** `*ngIf` / `*ngFor` — usa `@if` / `@for` / `@switch`
+4. **Mai** NgModules in codice nuovo — solo standalone components
+5. **Mai** componenti HTML naked per UI — usa sempre Angular Material
+6. **Sempre** `ChangeDetectionStrategy.OnPush`
+7. **Sempre** `standalone: true` su ogni componente
+8. **Sempre** `provideZonelessChangeDetection()` in `app.config.ts`
+9. **Sempre** Angular Material tokens via CSS custom properties — mai hex hardcoded nei component SCSS
+10. **Sempre** `HttpInterceptorFn` (functional) — mai class-based interceptors
+11. Usa `const` by default, `let` quando è necessario, **mai** `var`
