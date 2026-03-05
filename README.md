@@ -1,356 +1,105 @@
-# 🤖 Copilot Dev Kit
+# Copilot Dev Kit
 
-> **A comprehensive multi-agent development system for GitHub Copilot that coordinates specialized AI agents to plan, implement, and document software features with enterprise-grade quality.**
+Toolkit multi-agent per GitHub Copilot, orientato a pianificazione e implementazione guidata tramite agenti specializzati.
 
 [![GitHub Copilot](https://img.shields.io/badge/GitHub-Copilot-blue?logo=github)](https://github.com/features/copilot)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
 
-## 📋 Overview
+## Overview
 
-**Copilot Dev Kit** is a structured, agent-based workflow system that extends GitHub Copilot's capabilities through specialized AI agents. Each agent has a specific role in the software development lifecycle, from strategic planning to code implementation and documentation.
+`copilot_dev_kit` definisce un flusso operativo con 4 agenti:
 
-### Why This Matters
+- `Skynet`: orchestrazione del workflow, non implementa mai codice
+- `Spock`: analisi e pianificazione in due fasi (`interview` -> `plan`)
+- `Neo`: implementazione codice, con scope obbligatorio `backend` o `frontend`
+- `Woz`: design UI/UX (invocato da Spock durante il planning frontend)
 
-- **Consistency**: Every feature follows the same high-quality process
-- **Traceability**: Complete history of decisions and implementations
-- **Specialization**: Right agent for the right task
-- **Best Practices**: Built-in coding standards, architecture patterns, and performance guidelines
-- **Memory**: Never lose context between sessions
-
----
-
-## 🎯 Core Agents
-
-The system is built around four specialized agents, orchestrated by Skynet:
-
-### 🎛️ **Skynet** — The Orchestrator
-- **Role**: Coordinates all agents and manages workflow
-- **Never**: Writes code or creates plans directly
-- **Responsibilities**:
-  - Load project history at session start
-  - Delegate to specialized agents
-  - Ensure workflow consistency
-  - Track feature completion
-
-### 🖖 **Spock** — Strategic Planner & Architect
-- **Role**: Creates implementation strategies and technical plans
-- **Process**: Two-phase workflow (Interview → Plan)
-- **Responsibilities**:
-  - Gather requirements through structured interviews
-  - Analyze codebase and identify patterns
-  - Produce detailed implementation plans
-  - Coordinate UI/UX design (via Woz) when needed
-  - Assess technical risks and dependencies
-
-### 💻 **Neo** — Expert Coder
-- **Role**: Writes production-ready code
-- **Principles**: Clean Code, SOLID, DDD, performance-first
-- **Responsibilities**:
-  - Implement features following Spock's plans
-  - Write directly to files (never code in chat)
-  - Follow language/framework-specific best practices
-  - Create tests alongside implementation
-- **Supported Stacks**:
-  - C# / .NET (Minimal API, EF Core, xUnit)
-  - TypeScript / Angular (Signals, Standalone Components)
-  - Python, React, and more
-
-### 🎨 **Woz** — UI/UX Designer
-- **Role**: Creates design specifications and UI/UX guidelines
-- **Called by**: Spock during planning phase
-- **Responsibilities**:
-  - Design user interfaces and interactions
-  - Define component hierarchies
-  - Specify accessibility requirements
+L'obiettivo e garantire coerenza nelle decisioni tecniche, separare i ruoli e ridurre le ambiguita durante le implementazioni.
 
 ---
 
-## 🚀 Quick Start
+## Cosa e stato aggiornato
 
-### 1. Setup
+Il repository e stato allineato alle modifiche recenti:
 
-Clone this repository into your project's `.github` directory:
+- rimosso ogni riferimento ad agenti/componenti non piu presenti
+- `Skynet` delega solo a `Spock` e `Neo` (Woz passa da Spock)
+- `Neo` e un agente unico con `scope` esplicito (`backend` | `frontend`)
+- istruzioni semplificate e centralizzate nei file attualmente presenti in `.github/instructions`
+
+---
+
+## Quick Start
+
+### 1. Aggiungi il kit al progetto
 
 ```bash
-# In your project root
-git clone https://github.com/mgattilabs/copilot_dev_kit .github
+# dalla root del tuo progetto
+git clone https://github.com/mgattilabs/copilot_dev_kit .github/copilot_dev_kit
 ```
 
-Or add as a submodule:
+Oppure come submodule:
 
 ```bash
 git submodule add https://github.com/mgattilabs/copilot_dev_kit .github/copilot_dev_kit
 ```
 
-### 2. Invoke Skynet
+### 2. Avvia il flusso con Skynet
 
-In GitHub Copilot Chat (VS Code), simply type:
+In Copilot Chat (VS Code):
 
+```text
+@Skynet implementa autenticazione JWT
 ```
-@skynet implement user authentication with JWT
-```
 
-Skynet will:
-1. Delegate to Spock for planning
-2. Once plan is approved, delegate to Neo for implementation
+Flusso atteso:
 
-### 3. Review Plan Files
-
-All plans are stored in `docs/plan/` with ISO timestamps:
-
-```
-docs/plan/2026-02-24-1430-jwt-authentication.md
-```
+1. `Skynet -> Spock (interview)`
+2. `Skynet -> Spock (plan)`
+3. approvazione piano
+4. `Skynet -> Neo (scope: backend)`
+5. eventuale `Skynet -> Neo (scope: frontend)`
 
 ---
 
-## 📂 Project Structure
+## Struttura attuale del repository
 
-```
+```text
 .github/
-├── agents/                      # Agent definitions
-│   ├── skynet.agent.md         # Orchestrator
-│   ├── spock.agent.md          # Planner
-│   ├── neo.agent.md            # Coder
-│   └── woz.agent.md            # Designer
-│
-├── instructions/               # Generic coding guidelines
-│   ├── code-review-generic.instructions.md
-│   ├── performance-optimization.instructions.md
-│   ├── context-engineering.instructions.md
-│   ├── csharp.instructions.md
-│   ├── angular.instructions.md
-│   ├── dotnet-architecture-good-practices.instructions.md
-│   ├── object-calisthenics.instructions.md
-│   └── azure-devops-pipelines.instructions.md
-│
-└── skills/                     # Domain-specific expertise
-    ├── neo-dotnet/            # .NET implementation patterns
-    ├── neo-angular/           # Angular best practices
-    ├── spock-architecture/    # Architecture selection & CQRS
-    ├── spock-domain-analysis/ # Domain modeling
-    └── spock-risk-assessment/ # Migration & risk analysis
-
-docs/                           # Created in your project
-├── plan/                       # Implementation plans
-│   └── YYYY-MM-DD-HHmm-feature-name.md
-└── IMPLEMENTATION-LOG.md       # Changelog of all features
+  agents/
+    neo.agent.md
+    skynet.agent.md
+    spock.agent.md
+    woz.agent.md
+  instructions/
+    context-engineering.instructions.md
+    object-calisthenics.instructions.md
+    performance-optimization.instructions.md
+README.md
 ```
 
 ---
 
-## 🔄 Workflow Example
+## File principali
 
-### Scenario: Implement Minimal API Endpoints
-
-```
-User: "@skynet convert controllers to minimal API"
-
-1. Skynet → Spock (interview mode)
-   Spock asks: Which controllers? Performance requirements? Breaking changes?
-
-2. User answers questions
-
-3. Skynet → Spock (plan mode)
-   Spock produces:
-   - docs/plan/2026-02-24-1430-minimal-api-conversion.md
-   - Technical strategy
-   - File-by-file breakdown
-   - Testing strategy
-   - Risk assessment
-
-4. User reviews plan → approves
-
-5. Skynet → Neo (implement mode, with plan)
-   Neo writes:
-   - Minimal API endpoints
-   - DTOs and validators
-   - Unit tests
-   - Integration tests
-```
-
-**Result**: Feature implemented, tested, and documented in < 10 minutes.
+- `.github/agents/skynet.agent.md`: orchestrazione, routing e regole di delega
+- `.github/agents/spock.agent.md`: workflow `interview/plan`, checklist architetturali
+- `.github/agents/neo.agent.md`: regole di implementazione e autodetect stack
+- `.github/agents/woz.agent.md`: design system e linee guida UI Angular Material
+- `.github/instructions/*.instructions.md`: vincoli trasversali su contesto, performance e object calisthenics
 
 ---
 
-## 🛠️ Customization
+## Note operative
 
-### Add Your Own Instructions
-
-Place custom instructions in `.github/instructions/`:
-
-```markdown
----
-description: 'Project-specific coding rules'
-applyTo: '**/*.cs'
----
-
-# My Project Rules
-
-- Always use record types for DTOs
-- Prefix interfaces with 'I'
-- Use minimal API endpoints pattern
-```
-
-### Add Domain Skills
-
-Create skills in `.github/skills/[agent-name]-[domain]/`:
-
-```
-.github/skills/neo-myframework/
-├── SKILL.md                    # Skill definition
-└── references/
-    ├── patterns.md
-    └── examples.md
-```
-
-### Configure Agents
-
-Edit agent files in `.github/agents/` to:
-- Add/remove tools
-- Adjust descriptions
-- Change models
-- Add new agents
+- Per task full-stack, `Neo` va invocato in due passaggi separati: prima `backend`, poi `frontend`.
+- Lo scope di `Neo` e obbligatorio: senza `scope` l'agente si blocca per chiarimento.
+- La fase di design UI passa da `Spock -> Woz`, non viene chiamata direttamente da Skynet.
 
 ---
 
-## 📊 Documentation & Memory
+## License
 
-### Plan Files
-
-Every feature gets a plan file in `docs/plan/`:
-
-```markdown
----
-Progetto: MyApp
-Data: 2026-02-24
-Tipo: Feature Implementation
-Obiettivo: Convert Controllers to Minimal API
----
-
-## Descrizione
-[Strategic overview]
-
-## Analisi Tecnica
-[Technical decisions]
-
-## Piano di Implementazione
-[Step-by-step breakdown]
-
-## Testing Strategy
-[Test approach]
-
-## Status
-✅ Implemented
-**Completato**: 2026-02-24 14:30 UTC
-```
-
-### Implementation Log
-
-`docs/IMPLEMENTATION-LOG.md` tracks all features:
-
-| Data | Feature | Plan | Status | Note |
-|------|---------|------|--------|------|
-| 2026-02-24 | Minimal API Conversion | [link](plan/...) | ✅ | Completed |
-
----
-
-## 🎓 Best Practices Built-In
-
-### Code Quality
-- **SOLID Principles**: Enforced through instructions
-- **Clean Code**: Naming, structure, readability
-- **Object Calisthenics**: 9 rules for better OOP
-- **DRY**: No code duplication
-
-### Architecture
-- **CQRS**: Command/Query separation patterns
-- **Clean Architecture**: Dependency inversion
-- **DDD**: Domain-driven design patterns
-- **Modular Monolith**: Scalable without microservices
-
-### Performance
-- **Database**: Query optimization, indexing, N+1 prevention
-- **Frontend**: Lazy loading, tree-shaking, bundle optimization
-- **Backend**: Caching, async I/O, connection pooling
-- **Profiling**: Built-in performance benchmarking guidance
-
-### Testing
-- **Unit Tests**: Arrange-Act-Assert pattern
-- **Integration Tests**: Real dependencies
-- **Coverage**: Critical paths must be tested
-- **Test Naming**: Descriptive, scenario-based names
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Areas of interest:
-
-- New agent types (e.g., Security Auditor, Performance Analyst)
-- Additional domain skills (React, Vue, Go, Rust, etc.)
-- Language-specific instructions (Java, Ruby, Swift, etc.)
-- Enhanced workflow patterns
-- Bug fixes and improvements
-
-**How to contribute:**
-1. Fork this repository
-2. Create a feature branch
-3. Make your changes following existing patterns
-4. Submit a pull request with clear description
-
----
-
-## 📖 Documentation
-
-- [Agent Architecture](docs/AGENT-ARCHITECTURE.md) — How agents interact
-- [Workflow Guide](docs/WORKFLOW-GUIDE.md) — Detailed execution patterns
-- [Custom Skills Guide](docs/CUSTOM-SKILLS.md) — Creating domain expertise
-- [Troubleshooting](docs/TROUBLESHOOTING.md) — Common issues and solutions
-
----
-
-## 🔗 Resources
-
-- [GitHub Copilot Documentation](https://docs.github.com/en/copilot)
-- [Copilot Custom Instructions](https://code.visualstudio.com/docs/copilot/customization/custom-instructions)
-- [Prompt Engineering Guide](https://docs.github.com/en/copilot/concepts/prompting/prompt-engineering)
-- [Awesome GitHub Copilot](https://github.com/github/awesome-copilot)
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details
-
----
-
-## 🙏 Acknowledgments
-
-Built with inspiration from:
-- Clean Code by Robert C. Martin
-- Domain-Driven Design by Eric Evans
-- Microservices Patterns by Chris Richardson
-- The Pragmatic Programmer by Hunt & Thomas
-
----
-
-## 📧 Contact
-
-**Author**: Marco Gatti  
-**Organization**: MGatti Labs  
-**Repository**: [mgattilabs/copilot_dev_kit](https://github.com/mgattilabs/copilot_dev_kit)
-
-For questions, issues, or suggestions, please [open an issue](https://github.com/mgattilabs/copilot_dev_kit/issues) on GitHub.
-
----
-
-<div align="center">
-
-**Made with ❤️ for developers who care about code quality**
-
-⭐ Star this repo if you find it useful!
-
-</div>
+MIT License. Vedi `LICENSE` per i dettagli.
