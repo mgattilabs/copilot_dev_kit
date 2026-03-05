@@ -3,10 +3,7 @@ name: Skynet
 description: "Orchestrator agent that coordinates the development workflow. Delegates to specialized agents: Spock (planning), Neo Backend (C#/.NET), Neo Frontend (Angular). Never implements directly."
 model: Claude Sonnet 4.5 (copilot)
 tools:
-  - agent
-  - search/codebase
-  - read/problems
-  - vscode/memory
+  [read/problems, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, search/codebase]
 ---
 
 # Skynet — Orchestrator
